@@ -1413,22 +1413,38 @@ function removeSkeletons() { removeEl(document.getElementById('skeleton-card'));
 
 // Client-side content check — instant feedback before the live pipeline runs.
 // The server (/api/pipeline/run + /api/budget/estimate) enforces the same rules
-// authoritatively; this just saves the user a round-trip. Word-boundary matching
-// avoids false positives ("meth" won't match "method").
+// authoritatively; this just saves the user a round-trip. Mirrors lib/moderation.ts:
+// obfuscation-resistant (leetspeak, separators, spaced/repeated letters) with
+// word-boundary anchoring so legitimate words ("method", "bath bomb") pass.
 const PROHIBITED_TERMS = {
-  'illegal drugs': ['meth','methamphetamine','crystal meth','cocaine','crack cocaine','heroin','fentanyl','mdma','ecstasy','lsd','pcp','opium','magic mushrooms','illegal drugs'],
-  'weapons or explosives': ['firearm','firearms','handgun','handguns','pistol','rifle','shotgun','ammunition','ammo','assault rifle','machine gun','ghost gun','ar-15','ak-47','silencer','suppressor','grenade','explosive','explosives','dynamite','tnt','c4','pipe bomb','bomb','anthrax','sarin','ricin'],
+  'illegal drugs': ['meth','methamphetamine','crystal meth','cocaine','crack cocaine','heroin','fentanyl','mdma','ecstasy','lsd','pcp','magic mushrooms','illegal drugs'],
+  'weapons or explosives': ['firearm','firearms','handgun','handguns','pistol','rifle','shotgun','ammunition','ammo','assault rifle','machine gun','ghost gun','ar-15','ak-47','silencer','grenade','dynamite','tnt','pipe bomb','car bomb','build a bomb','make a bomb','explosives','anthrax','sarin','ricin'],
   'explicit content': ['porn','pornography','child porn','csam','escort service','prostitute','prostitution'],
-  'violence or other illegal activity': ['hitman','hit man','assassin','assassinate','kill someone','human trafficking'],
+  'violence or other illegal activity': ['hitman','hit man','assassinate','kill someone','human trafficking'],
 };
 
+const _LEET = {'0':'o','1':'i','3':'e','4':'a','5':'s','7':'t','8':'b','9':'g','@':'a','$':'s','!':'i','|':'i'};
+function _applyLeet(s) { let o=''; for (const c of s) o += (_LEET[c] ?? c); return o; }
+function _normalize(s) { return _applyLeet(s.toLowerCase()); }
+function _joinSpacedLetters(s) { return s.replace(/\b[a-z](?:\s+[a-z]\b){2,}/g, m => m.replace(/\s+/g,'')); }
+function _esc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+function _buildTermRegex(term) {
+  const IN = "[._\\-*'`~]*", BETWEEN = "[\\s._\\-*'`~]+";
+  const words = _normalize(term).split(/\s+/).filter(Boolean);
+  const wordPat = w => Array.from(w).filter(c => /[a-z0-9]/.test(c)).map(c => _esc(c)+'+').join(IN);
+  return new RegExp('\\b' + words.map(wordPat).join(BETWEEN) + '\\b', 'i');
+}
+const _COMPILED = Object.entries(PROHIBITED_TERMS).flatMap(
+  ([label, terms]) => terms.map(t => ({ label, re: _buildTermRegex(t) }))
+);
+
 function flagProhibitedInput(...parts) {
-  const text = parts.filter(Boolean).join(' ');
-  if (!text.trim()) return null;
-  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  for (const [label, terms] of Object.entries(PROHIBITED_TERMS)) {
-    const re = new RegExp(`\\b(?:${terms.map(esc).join('|')})\\b`, 'i');
-    if (re.test(text)) {
+  const raw = parts.filter(Boolean).join(' ');
+  if (!raw.trim()) return null;
+  const base = _normalize(raw);
+  const variants = [base, _joinSpacedLetters(base)];
+  for (const { label, re } of _COMPILED) {
+    if (variants.some(v => re.test(v))) {
       return `This request was flagged because it appears to involve ${label}. OTTO only helps with legitimate shopping — please revise your request.`;
     }
   }
