@@ -932,6 +932,14 @@ window.imgFallback = imgFallback;
 
 function renderOptionsCard(candidates) {
   const container = document.getElementById('feed-messages');
+
+  // Each mission appends its own ranked card. The #options-card id marks the
+  // *current* mission's card (used by scrollToTopPick + rerank), so hand it off
+  // from any previous mission's card to this new one — otherwise getElementById
+  // keeps returning the first/oldest card and we scroll to the wrong product.
+  const prev = document.getElementById('options-card');
+  if (prev) prev.removeAttribute('id');
+
   const card = document.createElement('div');
   card.className = 'options-card';
   card.id = 'options-card';
