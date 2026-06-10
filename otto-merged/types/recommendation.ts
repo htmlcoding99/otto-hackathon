@@ -28,6 +28,7 @@ export interface Candidate {
   badges: BadgeType[];
   scores: CandidateScores;
   source?: string; // e.g. "amazon", "google_shopping"
+  image?: string;  // product preview thumbnail (from the result page's og:image)
 }
 
 export interface RejectedCandidate extends Omit<Candidate, "scores"> {

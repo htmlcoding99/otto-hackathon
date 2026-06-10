@@ -256,7 +256,7 @@ html, body {
   z-index: 1;
   flex: 1;
   display: grid;
-  grid-template-columns: 360px 1fr 280px;
+  grid-template-columns: 360px 1fr 330px;
   overflow: hidden;
   height: calc(100vh - 58px);
 }
@@ -748,86 +748,114 @@ input[type=number] { -moz-appearance: textfield; }
   background: rgba(251,113,133,0.1);
 }
 
-/* Mission Log — richer two-line items with hover actions */
-.session-item { flex-direction: column; align-items: stretch; gap: 4px; position: relative; }
-.session-item-top {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.session-item-top .session-goal { font-weight: 600; color: var(--t1, #e6e8ee); }
-.session-item-bottom {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 10px;
-  color: var(--t3, #6b7180);
-}
-.session-win {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--t2, #9ca3b8);
-}
-.session-badge {
-  color: var(--emerald, #34d399);
-  font-weight: 600;
-  flex-shrink: 0;
-}
-.session-actions {
-  display: flex;
-  gap: 2px;
-  opacity: 0;
-  transition: opacity 0.15s;
-  flex-shrink: 0;
-}
-.session-item:hover .session-actions { opacity: 1; }
-.si-btn {
-  background: none;
-  border: none;
-  color: var(--t3, #6b7180);
-  font-size: 12px;
-  line-height: 1;
-  cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 5px;
-}
-.si-btn:hover { color: #fff; background: rgba(255,255,255,0.1); }
-.si-btn.del:hover { color: var(--rose, #fb7185); }
-
-/* ── Session Log ── */
+/* ── Mission Log ── clean two-line cards with hover actions ── */
 .session-log {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
 }
-
 .session-empty {
   font-size: 11px;
   color: var(--t3);
   font-style: italic;
+  padding: 4px 2px;
+  line-height: 1.5;
 }
 
 .session-item {
+  position: relative;
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 9px;
+  flex-direction: column;
+  gap: 5px;
+  padding: 9px 11px;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 10px;
   background: var(--bg-card);
-  font-size: 11px;
   cursor: pointer;
-  transition: border-color 0.2s;
+  transition: border-color 0.15s, background 0.15s;
 }
-
-.session-item { cursor: pointer; transition: border-color 0.15s, background 0.15s; }
-.session-item:hover { border-color: var(--border-md); background: rgba(255,255,255,0.03); }
+.session-item:hover { border-color: var(--border-md); background: rgba(255,255,255,0.035); }
 .session-item.active {
   border-color: rgba(192,132,252,0.5);
   background: rgba(192,132,252,0.08);
 }
+/* a slim accent bar on the active mission */
+.session-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 8px; bottom: 8px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--grad-brand);
+}
+
+.session-item .si-goal {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--t1);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-right: 40px;        /* leave room for the hover actions */
+}
+
+.si-meta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  color: var(--t3);
+}
+.si-win {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--t2);
+}
+.si-win::before { content: '🏆'; margin-right: 4px; font-size: 9px; }
+.si-price {
+  color: var(--emerald);
+  font-weight: 700;
+  font-family: var(--font-m);
+  flex-shrink: 0;
+}
+.si-badge {
+  color: var(--emerald);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.si-time {
+  color: var(--t3);
+  font-family: var(--font-m);
+  flex-shrink: 0;
+}
+
+.si-actions {
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  display: flex;
+  gap: 3px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.session-item:hover .si-actions { opacity: 1; }
+.si-btn {
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  color: var(--t3);
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.si-btn:hover { color: #fff; background: rgba(255,255,255,0.12); }
+.si-btn.del:hover { color: var(--rose, #fb7185); border-color: rgba(251,113,133,0.4); }
 
 /* New-chat button + header row */
 .section-header-row {
@@ -1255,6 +1283,60 @@ input[type=number] { -moz-appearance: textfield; }
   font-family: var(--font-m);
   white-space: nowrap;
 }
+
+/* Product thumbnail (from Exa og:image, or 🛍️ placeholder when missing) */
+.opt-thumb {
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+}
+.opt-thumb-ph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+/* Full-width banner image for the #1 ranked pick */
+.opt-banner {
+  display: block;
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-bottom: 11px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+}
+.opt-banner.opt-thumb-ph { font-size: 34px; }
+
+/* Clickable product name → opens the real listing in a new tab */
+.opt-name-link {
+  text-decoration: none;
+  cursor: pointer;
+}
+.opt-name-link:hover {
+  color: var(--sky);
+  text-decoration: underline;
+}
+
+/* "View product →" footer link */
+.opt-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--sky);
+  text-decoration: none;
+}
+.opt-link:hover { text-decoration: underline; }
+.opt-link svg { flex-shrink: 0; }
 
 .opt-badges {
   display: flex;
@@ -2292,19 +2374,378 @@ input[type=number] { -moz-appearance: textfield; }
 /* ── Options card inside feed ── */
 .options-card { animation: msg-in 0.35s ease; }
 
+/* Keep a little breathing room when we scroll the #1 pick to the top */
+.options-card { scroll-margin-top: 14px; }
+
+/* ── Pipeline progress stepper ── */
+.pipe-stepper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg-card);
+  animation: msg-in 0.35s ease;
+  overflow-x: auto;
+}
+.pipe-step {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+}
+.pipe-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font-m);
+  color: var(--t3);
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  transition: all 0.3s;
+}
+.pipe-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--t3);
+  white-space: nowrap;
+  transition: color 0.3s;
+}
+.pipe-line {
+  flex: 1;
+  min-width: 14px;
+  height: 2px;
+  background: var(--border);
+  transition: background 0.3s;
+}
+.pipe-step.active .pipe-dot {
+  color: #fff;
+  background: var(--grad-brand);
+  border-color: transparent;
+  box-shadow: 0 0 0 4px rgba(192,132,252,0.15);
+}
+.pipe-step.active .pipe-label { color: var(--t1); }
+.pipe-step.done .pipe-dot {
+  color: #fff;
+  background: var(--emerald, #34d399);
+  border-color: transparent;
+}
+.pipe-step.done .pipe-label { color: var(--t2); }
+.pipe-line.done { background: var(--emerald, #34d399); }
+
+/* ── Skeleton shimmer loaders ── */
+.skeleton-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg-card);
+}
+.skel-row { display: flex; align-items: center; gap: 12px; }
+.skel-lines { flex: 1; display: flex; flex-direction: column; gap: 7px; }
+.skel {
+  background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.1) 37%, rgba(255,255,255,0.04) 63%);
+  background-size: 400% 100%;
+  border-radius: 6px;
+  animation: skel-shimmer 1.4s ease infinite;
+}
+.skel-thumb { width: 46px; height: 46px; border-radius: 8px; flex-shrink: 0; }
+.skel-line { height: 11px; }
+.skel-line.w70 { width: 70%; }
+.skel-line.w40 { width: 40%; }
+.skel-price { width: 52px; height: 18px; flex-shrink: 0; }
+@keyframes skel-shimmer {
+  0%   { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+/* ── Glass-box score explanations (expandable per card) ── */
+.opt-explain {
+  margin-top: 7px;
+  font-size: 11px;
+}
+.opt-explain summary {
+  cursor: pointer;
+  color: var(--sky);
+  font-weight: 600;
+  list-style: none;
+  user-select: none;
+}
+.opt-explain summary::-webkit-details-marker { display: none; }
+.opt-explain summary::before {
+  content: '▸ ';
+  display: inline-block;
+  transition: transform 0.15s;
+}
+.opt-explain[open] summary::before { content: '▾ '; }
+.opt-explain ul {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  background: var(--bg-hover);
+  border-radius: 8px;
+}
+.opt-explain li { color: var(--t2); line-height: 1.4; }
+.opt-explain li strong { color: var(--t1); }
+
+/* ── Decision Twin stats ── */
+.twin-stats { margin-top: 10px; }
+.twin-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.twin-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 7px 4px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+}
+.twin-stat-num {
+  font-family: var(--font-m);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--t1);
+}
+.twin-stat-lbl {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--t3);
+  margin-top: 1px;
+}
+.twin-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+.twin-tag {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 20px;
+  color: var(--violet);
+  background: rgba(192,132,252,0.1);
+  border: 1px solid rgba(192,132,252,0.2);
+}
+
+/* ── Radar comparison chart ── */
+.radar-card {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg-card);
+  padding: 14px 16px 16px;
+  animation: msg-in 0.35s ease;
+}
+.radar-head {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--t2);
+  margin-bottom: 6px;
+}
+.radar-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.radar-svg {
+  width: 260px;
+  max-width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.radar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 14px;
+}
+.radar-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--t2);
+}
+.radar-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── "New request" separator between stacked missions ── */
+.mission-sep {
+  display: flex;
+  justify-content: center;
+  margin: 18px 0 4px;
+  animation: msg-in 0.35s ease;
+}
+.mission-sep-card {
+  width: 100%;
+  max-width: 520px;
+  text-align: center;
+  padding: 13px 16px;
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(192,132,252,0.06), rgba(56,189,248,0.04));
+}
+.mission-sep-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  padding: 3px 9px;
+  border-radius: 20px;
+  color: #fff;
+  background: var(--grad-brand);
+}
+.mission-sep-goal {
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--t1);
+  line-height: 1.35;
+}
+.mission-sep-meta {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--t3);
+  font-family: var(--font-m);
+}
+
 /* ── Approval inline container ── */
 #approval-inline-el { animation: msg-in 0.4s ease; }
 
+/* ══════════ HOVER POLISH — subtle, on-brand micro-interactions ══════════ */
+/* Reuses the established hover language: violet-tinted borders
+   (rgba(192,132,252,…)), bg-hover, and small 1px lifts. Nothing flashy. */
+
+/* Score chips hint they're interactive (they carry tooltips now). */
+.score-chip {
+  border: 1px solid transparent;
+  transition: background 0.18s, border-color 0.18s, transform 0.18s;
+}
+.score-chip:hover {
+  border-color: rgba(192,132,252,0.3);
+  transform: translateY(-1px);
+}
+
+/* Candidate rows: soft brand accent on the left edge + a gentle image zoom. */
+.opt-item { transition: background 0.18s, box-shadow 0.18s; }
+.opt-item:not(.top-pick):hover { box-shadow: inset 3px 0 0 rgba(192,132,252,0.35); }
+.opt-thumb { transition: transform 0.25s ease; }
+.opt-item:hover .opt-thumb { transform: scale(1.04); }
+
+/* Twin stat tiles + scoreboard cards adopt the same violet hover. */
+.twin-stat { transition: border-color 0.18s, transform 0.18s; }
+.twin-stat:hover { border-color: rgba(192,132,252,0.3); transform: translateY(-1px); }
+.sb-card:hover { background: rgba(255,255,255,0.025); }
+
+/* Quick-demo presets already slide; nudge their emoji along too. */
+.preset-emoji { transition: transform 0.2s ease; }
+.preset-btn:hover .preset-emoji { transform: scale(1.12); }
+
+/* Radar legend entries gently brighten on hover. */
+.radar-legend-item { transition: color 0.18s; }
+.radar-legend-item:hover { color: var(--t1); }
+
+/* "View product" link slides a touch toward its arrow. */
+.opt-link { transition: color 0.15s, transform 0.15s; }
+.opt-link:hover { transform: translateX(2px); }
+
+/* Mission-log cards lift a hair so the hover reads as "openable". */
+.session-item { transition: border-color 0.15s, background 0.15s, transform 0.15s; }
+.session-item:hover { transform: translateY(-1px); }
+
 /* ══════════ RESPONSIVE ══════════ */
 @media (max-width: 1024px) {
-  .main-layout { grid-template-columns: 340px 1fr; }
+  .main-layout { grid-template-columns: 320px 1fr; }
   .decision-panel { display: none !important; }
 }
 
 @media (max-width: 680px) {
-  .main-layout { grid-template-columns: 1fr; }
-  .sidebar { display: none; }
+  /* Mobile is a single scrolling column — composer, quick demos, then feed —
+     not a shrunk-down version of the 3-pane desktop shell. */
+  html, body { overflow-y: auto; overflow-x: hidden; height: auto; }
+
+  /* Compact header: keep the logo + status, drop the rest so it never wraps.
+     The desktop min-widths (logo 180 + right 200) overflow a phone — reset them. */
+  .header-inner { padding: 0 14px; gap: 10px; }
+  .header-center,
+  .twin-badge,
   .logo-badge { display: none; }
+  .logo { min-width: 0; }
+  .header-right { min-width: 0; gap: 8px; }
+
+  .main-layout {
+    display: block;
+    height: auto;
+    overflow: visible;
+  }
+
+  /* Composer column becomes the top of the page. */
+  .sidebar {
+    display: flex;
+    width: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    overflow: visible;
+    max-height: none;
+    padding: 14px;
+    gap: 16px;
+  }
+
+  /* Hide the heavy reference panels (Decision Twin viz, Mission Log) on phones
+     so the composer sits right above the feed. History still works on desktop. */
+  .sidebar-section.mobile-hide { display: none; }
+
+  /* Quick demos become a horizontal, swipeable row instead of a tall stack. */
+  .demo-presets {
+    flex-direction: row;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .preset-btn { flex: 0 0 auto; min-width: 158px; }
+
+  /* 16px inputs stop iOS Safari from auto-zooming the page on focus. */
+  .form-textarea,
+  .form-input,
+  .form-select,
+  .budget-input { font-size: 16px; }
+
+  .decision-panel { display: none !important; }
+
+  /* Feed flows below the composer; the window handles scrolling. */
+  .agent-feed { min-height: 55vh; overflow: visible; }
+  .feed-wrap { overflow: visible; padding: 16px 14px; }
+  .feed-messages { max-width: 100%; }
+
+  /* Trim the welcome hero so it doesn't push the composer/feed off-screen. */
+  .welcome-state { padding: 26px 18px; gap: 14px; }
+  .welcome-orb { width: 84px; height: 84px; }
+  .welcome-title { font-size: 26px; }
+  .welcome-subtitle { font-size: 13px; }
+
+  /* Modals fit small screens. */
+  .modal { max-width: 94vw !important; }
 }
 
 /* ── Scrollbar Global ── */

@@ -11,6 +11,7 @@ export interface ExaCandidate {
   url: string;
   description: string;
   reasoning_score: number;
+  image?: string;          // og:image / preview thumbnail from the result page
 
   rating?: number;
   deliveryDays?: number;
@@ -100,6 +101,9 @@ async function executeExaSearch(
     url: r.url,
     description: cleanDescription(r.highlights, r.text || ""),
     reasoning_score: 0.7,
+    // Exa returns the page's og:image when one exists — used as the product
+    // thumbnail in the UI. May be undefined for results with no preview image.
+    image: typeof r.image === "string" && r.image.startsWith("http") ? r.image : undefined,
   }));
 
   return results;

@@ -160,6 +160,7 @@ export const CandidateService = {
         badges: [],
         scores: { ...EMPTY_SCORES },
         source: "exa",
+        image: r.image,
       };
       return candidate;
     });

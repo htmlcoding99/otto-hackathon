@@ -138,8 +138,40 @@ const DecisionTwin = {
     const note = document.getElementById('twin-note');
     note.textContent = this.getInsight(profile);
 
+    this.renderStats(profile);
+
     const dot = document.getElementById('twin-dot');
     if (dot) dot.classList.add('active');
+  },
+
+  // Real, concrete stats from saved mission history — makes the learning feel
+  // earned rather than decorative.
+  renderStats(profile) {
+    const el = document.getElementById('twin-stats');
+    if (!el) return;
+
+    const all = loadMissions();
+    const missions = all.length;
+    if (!missions) { el.innerHTML = ''; return; }
+
+    const purchased    = all.filter(m => m.purchased).length;
+    const approvalRate = Math.round((purchased / missions) * 100);
+    const priced       = all.filter(m => m.winner && typeof m.winner.price === 'number');
+    const avgSpend     = priced.length ? priced.reduce((s, m) => s + m.winner.price, 0) / priced.length : 0;
+
+    const tags = [];
+    if (profile.budgetSensitivity > 60) tags.push('budget-conscious');
+    if (profile.deliveryPriority  > 60) tags.push('fast-delivery');
+    if (profile.qualityFocus      > 65) tags.push('quality-focused');
+    if (!tags.length) tags.push('balanced');
+
+    el.innerHTML = `
+      <div class="twin-stat-grid">
+        <div class="twin-stat"><span class="twin-stat-num">${missions}</span><span class="twin-stat-lbl">missions</span></div>
+        <div class="twin-stat"><span class="twin-stat-num">${approvalRate}%</span><span class="twin-stat-lbl">approved</span></div>
+        <div class="twin-stat"><span class="twin-stat-num">$${avgSpend.toFixed(0)}</span><span class="twin-stat-lbl">avg spend</span></div>
+      </div>
+      <div class="twin-tags">${tags.map(t => `<span class="twin-tag">${t}</span>`).join('')}</div>`;
   },
 };
 
@@ -596,6 +628,32 @@ function scrollFeedBottom() {
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'end' });
 }
 
+// Once results are in, rest the view on the #1 ranked product (top of the
+// options card) instead of scrolling past everything to the approval gate.
+function scrollToTopPick() {
+  const card = document.getElementById('options-card');
+  if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  else scrollFeedBottom();
+}
+
+// Visual differentiator between consecutive requests in the same feed — each
+// new launch drops a "NEW REQUEST" separator showing the goal, so stacked
+// missions read as distinct conversations.
+function addMissionSeparator(goal, budget) {
+  const container = document.getElementById('feed-messages');
+  const div = document.createElement('div');
+  div.className = 'mission-sep';
+  const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  div.innerHTML = `
+    <div class="mission-sep-card">
+      <span class="mission-sep-badge">NEW REQUEST</span>
+      <div class="mission-sep-goal">${escapeHtml(goal)}</div>
+      <div class="mission-sep-meta">Budget $${Number(budget).toFixed(0)} · ${time}</div>
+    </div>`;
+  container.appendChild(div);
+  scrollFeedBottom();
+}
+
 function addMsg(type, who, avatarClass, content) {
   const container = document.getElementById('feed-messages');
   const div = document.createElement('div');
@@ -675,6 +733,27 @@ function delay(ms) {
 // SECTION 7 — RENDERING
 // ══════════════════════════════════════════════
 
+// Glass-box: turn each 0–100 score into a plain-English reason from the
+// underlying facts (price vs budget, delivery, rating, savings vs average).
+function explainScores(c, budget) {
+  const price  = c.price || 0;
+  const remain = Math.max(0, budget - price);
+  const pct    = budget > 0 ? Math.round((remain / budget) * 100) : 0;
+
+  const value = budget > 0
+    ? `$${price.toFixed(2)} — leaves $${remain.toFixed(2)} (${pct}%) of your $${budget.toFixed(0)} budget`
+    : `Priced at $${price.toFixed(2)}`;
+  const speed = c.deliveryDays <= 1 ? 'Arrives same day'
+    : c.deliveryDays <= 2 ? 'Fast 2-day delivery'
+    : `${c.deliveryDays}-day delivery`;
+  const quality = `${c.rating}★ across ${Number(c.reviews || 0).toLocaleString()} reviews`;
+  const savings = (c._avgSaved && c._avgSaved > 0)
+    ? `$${c._avgSaved.toFixed(2)} cheaper than the average option`
+    : 'Priced around the category average';
+
+  return { value, speed, quality, savings };
+}
+
 function renderCandidateCard(c, rank, total) {
   const rankLabel = rank === 1 ? '#1' : rank === 2 ? '#2' : rank === 3 ? '#3' : `#${rank}`;
   const rankClass = rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : '';
@@ -691,12 +770,40 @@ function renderCandidateCard(c, rank, total) {
 
   const avgSaved = c._avgSaved !== undefined ? `Saves $${c._avgSaved.toFixed(2)} vs avg` : '';
 
+  // Plain-English reason behind each score (tooltip + expandable breakdown).
+  const budget = (state.currentTask && state.currentTask.budget) || (c.price + (c._avgSaved || 0));
+  const why = explainScores(c, budget);
+
+  // Real product link (Exa results have a real URL; mock/preset data uses '#').
+  const hasUrl = c.url && c.url !== '#';
+
+  // The #1 pick shows its image as a full-width banner; the rest use a small
+  // thumbnail beside the name.
+  const banner = (isTop && c.image)
+    ? `<img class="opt-banner" src="${escapeHtml(c.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="imgFallback(this)">`
+    : '';
+  const thumb = banner
+    ? ''                                  // banner replaces the inline thumb
+    : c.image
+      ? `<img class="opt-thumb" src="${escapeHtml(c.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="imgFallback(this)">`
+      : `<div class="opt-thumb opt-thumb-ph">🛍️</div>`;
+  const nameHTML = hasUrl
+    ? `<a class="opt-name opt-name-link" href="${escapeHtml(c.url)}" target="_blank" rel="noopener noreferrer">${c.name}</a>`
+    : `<div class="opt-name">${c.name}</div>`;
+  const viewLink = hasUrl
+    ? `<a class="opt-link" href="${escapeHtml(c.url)}" target="_blank" rel="noopener noreferrer">View product
+         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M7 17 17 7M9 7h8v8"/></svg>
+       </a>`
+    : '';
+
   return `
     <div class="opt-item ${isTop ? 'top-pick' : ''}">
+      ${banner}
       <div class="opt-row1">
         <span class="opt-rank ${rankClass}">${rankLabel}</span>
-        <div>
-          <div class="opt-name">${c.name}</div>
+        ${thumb}
+        <div style="flex:1;min-width:0">
+          ${nameHTML}
           <div class="opt-badges" style="margin-top:4px">${badgeHTML}</div>
         </div>
         <span class="opt-price">$${c.price.toFixed(2)}</span>
@@ -707,16 +814,37 @@ function renderCandidateCard(c, rank, total) {
         ${deliveryStr} · ${c.rating}★ · ${reviewStr}${avgSaved ? ' · ' + avgSaved : ''}
       </div>
       <div class="opt-scores">
-        <div class="score-chip"><span class="score-chip-label">Value</span><span class="score-chip-val">${valueScore}</span></div>
-        <div class="score-chip"><span class="score-chip-label">Speed</span><span class="score-chip-val">${deliveryScore}</span></div>
-        <div class="score-chip"><span class="score-chip-label">Quality</span><span class="score-chip-val">${qualityScore}</span></div>
-        <div class="score-chip"><span class="score-chip-label">Savings</span><span class="score-chip-val">${savingsScore}</span></div>
+        <div class="score-chip" title="${escapeHtml(why.value)}"><span class="score-chip-label">Value</span><span class="score-chip-val">${valueScore}</span></div>
+        <div class="score-chip" title="${escapeHtml(why.speed)}"><span class="score-chip-label">Speed</span><span class="score-chip-val">${deliveryScore}</span></div>
+        <div class="score-chip" title="${escapeHtml(why.quality)}"><span class="score-chip-label">Quality</span><span class="score-chip-val">${qualityScore}</span></div>
+        <div class="score-chip" title="${escapeHtml(why.savings)}"><span class="score-chip-label">Savings</span><span class="score-chip-val">${savingsScore}</span></div>
       </div>
+      <details class="opt-explain">
+        <summary>Why these scores?</summary>
+        <ul>
+          <li><strong>Value ${valueScore}</strong> — ${escapeHtml(why.value)}</li>
+          <li><strong>Speed ${deliveryScore}</strong> — ${escapeHtml(why.speed)}</li>
+          <li><strong>Quality ${qualityScore}</strong> — ${escapeHtml(why.quality)}</li>
+          <li><strong>Savings ${savingsScore}</strong> — ${escapeHtml(why.savings)}</li>
+        </ul>
+      </details>
       <div class="opt-final-score" style="margin-top:6px">
         Final Score: <span class="fscore">${finalScore}</span>
+        ${viewLink}
       </div>
     </div>`;
 }
+
+// Swap a broken product image for the placeholder tile (Exa thumbnails can
+// 404 or be hotlink-blocked; we never want a broken-image icon in the card).
+function imgFallback(img) {
+  const isBanner = img && img.classList && img.classList.contains('opt-banner');
+  const ph = document.createElement('div');
+  ph.className = (isBanner ? 'opt-banner' : 'opt-thumb') + ' opt-thumb-ph';
+  ph.textContent = '🛍️';
+  if (img && img.replaceWith) img.replaceWith(ph);
+}
+window.imgFallback = imgFallback;
 
 function renderOptionsCard(candidates) {
   const container = document.getElementById('feed-messages');
@@ -737,6 +865,73 @@ function renderOptionsCard(candidates) {
     </div>
     ${candidates.map((c, i) => renderCandidateCard(c, i + 1, candidates.length)).join('')}`;
   container.appendChild(card);
+  scrollFeedBottom();
+}
+
+// SVG radar/spider chart comparing the top 3 candidates across the four score
+// axes. One picture tells the whole scoring story better than a table.
+function renderRadarChart(candidates) {
+  const top = (candidates || []).slice(0, 3);
+  if (!top.length) return;
+
+  const axes = [
+    { key: 'valueScore',    label: 'Value' },
+    { key: 'deliveryScore', label: 'Speed' },
+    { key: 'qualityScore',  label: 'Quality' },
+    { key: 'savingsScore',  label: 'Savings' },
+  ];
+  const colors = ['#c084fc', '#38bdf8', '#34d399'];
+
+  const size = 260, cx = size / 2, cy = size / 2, R = 90, N = axes.length;
+  const ang   = (i) => (-90 + i * (360 / N)) * Math.PI / 180;
+  const pt    = (i, r) => [cx + Math.cos(ang(i)) * r, cy + Math.sin(ang(i)) * r];
+  const polyPts = (r, valFn) =>
+    axes.map((a, i) => pt(i, r * valFn(a, i)).map((n) => n.toFixed(1)).join(',')).join(' ');
+
+  // Concentric grid rings + spokes + axis labels
+  let grid = '';
+  [0.25, 0.5, 0.75, 1].forEach((f) => {
+    grid += `<polygon points="${polyPts(R * f, () => 1)}" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>`;
+  });
+  let spokes = '', labels = '';
+  axes.forEach((a, i) => {
+    const [x, y] = pt(i, R);
+    spokes += `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="rgba(255,255,255,0.08)"/>`;
+    const [lx, ly] = pt(i, R + 16);
+    const anchor = Math.abs(lx - cx) < 1 ? 'middle' : lx > cx ? 'start' : 'end';
+    labels += `<text x="${lx.toFixed(1)}" y="${(ly + 4).toFixed(1)}" fill="var(--t3)" font-size="10" text-anchor="${anchor}">${a.label}</text>`;
+  });
+
+  // One translucent polygon per candidate, plus vertex dots
+  let shapes = '';
+  top.forEach((c, idx) => {
+    const col = colors[idx];
+    const val = (a) => Math.max(0, Math.min(100, (c.scores && c.scores[a.key]) || 0)) / 100;
+    shapes += `<polygon points="${polyPts(R, val)}" fill="${col}" fill-opacity="0.12" stroke="${col}" stroke-width="2"/>`;
+    axes.forEach((a, i) => {
+      const [x, y] = pt(i, R * val(a));
+      shapes += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.5" fill="${col}"/>`;
+    });
+  });
+
+  const legend = top
+    .map((c, idx) => {
+      const name = c.name.length > 34 ? c.name.slice(0, 33) + '…' : c.name;
+      return `<div class="radar-legend-item"><span class="radar-dot" style="background:${colors[idx]}"></span>${escapeHtml(name)}</div>`;
+    })
+    .join('');
+
+  const card = document.createElement('div');
+  card.className = 'radar-card';
+  card.innerHTML = `
+    <div class="radar-head">Top ${top.length} compared · Value · Speed · Quality · Savings</div>
+    <div class="radar-body">
+      <svg viewBox="0 0 ${size} ${size}" class="radar-svg" role="img" aria-label="Radar comparison of top candidates">
+        ${grid}${spokes}${labels}${shapes}
+      </svg>
+      <div class="radar-legend">${legend}</div>
+    </div>`;
+  document.getElementById('feed-messages').appendChild(card);
   scrollFeedBottom();
 }
 
@@ -1025,6 +1220,110 @@ function renderDecisionReport() {
 }
 
 // ══════════════════════════════════════════════
+// SECTION 7b — POLISH: stepper · sound · skeletons
+// ══════════════════════════════════════════════
+
+// Pipeline progress stepper — Research → Score → Decide → Approve → Execute.
+const Stepper = {
+  stages: ['Research', 'Score', 'Decide', 'Approve', 'Execute'],
+  el: null,
+
+  mount() {
+    const container = document.getElementById('feed-messages');
+    const wrap = document.createElement('div');
+    wrap.className = 'pipe-stepper';
+    wrap.id = 'pipe-stepper';
+    wrap.innerHTML = this.stages.map((s, i) =>
+      `<div class="pipe-step" data-i="${i}"><span class="pipe-dot">${i + 1}</span><span class="pipe-label">${s}</span></div>` +
+      (i < this.stages.length - 1 ? '<div class="pipe-line" data-i="' + i + '"></div>' : '')
+    ).join('');
+    container.appendChild(wrap);
+    this.el = wrap;
+    this.set(-1);
+    scrollFeedBottom();
+  },
+
+  set(active) {
+    if (!this.el) return;
+    this.el.querySelectorAll('.pipe-step').forEach((step) => {
+      const i = +step.dataset.i;
+      step.classList.toggle('done', i < active);
+      step.classList.toggle('active', i === active);
+    });
+    this.el.querySelectorAll('.pipe-line').forEach((ln) => {
+      ln.classList.toggle('done', +ln.dataset.i < active);
+    });
+  },
+
+  // Map each pipeline agent onto a stepper stage.
+  agentStage(agent) {
+    const m = {
+      PlannerAgent: 0, DecisionTwinAgent: 0, ResearchAgent: 0,
+      ConstraintAnalysisAgent: 1, RankingAgent: 1,
+      SavingsOptimizerAgent: 2,
+    };
+    return m[agent] ?? 0;
+  },
+};
+
+// Subtle Web Audio cues — no asset files, generated on the fly. Needs a user
+// gesture to start the AudioContext; launchOtto runs from a click, so it's fine.
+const Sound = {
+  ctx: null,
+  enabled: JSON.parse(localStorage.getItem('otto_sound') || 'true'),
+
+  ac() {
+    if (!this.ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) this.ctx = new AC();
+    }
+    return this.ctx;
+  },
+
+  tone(freq, dur, type = 'sine', gain = 0.05) {
+    if (!this.enabled) return;
+    const ac = this.ac();
+    if (!ac) return;
+    try {
+      const o = ac.createOscillator();
+      const g = ac.createGain();
+      o.type = type;
+      o.frequency.value = freq;
+      o.connect(g); g.connect(ac.destination);
+      const t = ac.currentTime;
+      g.gain.setValueAtTime(gain, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.start(t); o.stop(t + dur);
+    } catch { /* audio blocked — non-fatal */ }
+  },
+
+  whoosh() { this.tone(180, 0.18, 'sawtooth', 0.045); this.tone(300, 0.16, 'sine', 0.035); },
+  tick()   { this.tone(660, 0.05, 'square', 0.02); },
+  chime()  { [523, 659, 784].forEach((f, i) => setTimeout(() => this.tone(f, 0.28, 'sine', 0.05), i * 90)); },
+};
+
+// Shimmer placeholder cards shown while the pipeline is working.
+function renderSkeletons(n = 3) {
+  const container = document.getElementById('feed-messages');
+  const wrap = document.createElement('div');
+  wrap.className = 'skeleton-card';
+  wrap.id = 'skeleton-card';
+  wrap.innerHTML = Array.from({ length: n }).map(() =>
+    `<div class="skel-row">
+       <div class="skel skel-thumb"></div>
+       <div class="skel-lines">
+         <div class="skel skel-line w70"></div>
+         <div class="skel skel-line w40"></div>
+       </div>
+       <div class="skel skel-price"></div>
+     </div>`).join('');
+  container.appendChild(wrap);
+  scrollFeedBottom();
+}
+
+function removeSkeletons() { removeEl(document.getElementById('skeleton-card')); }
+
+// ══════════════════════════════════════════════
 // SECTION 8 — MAIN LAUNCH FLOW
 // ══════════════════════════════════════════════
 
@@ -1069,8 +1368,12 @@ async function launchOtto() {
   const profile = DecisionTwin.updateFromSliders();
 
   setActivity('Sending mission to OTTO backend...');
-  addDivider('MISSION LAUNCHED');
+  addMissionSeparator(goal, budget);
+  Sound.whoosh();
+  Stepper.mount();
+  Stepper.set(0);
   const t = addThinking('Agents are evaluating the pipeline...');
+  renderSkeletons(3);
 
   try {
     const res = await fetch('/api/pipeline/run', {
@@ -1099,18 +1402,22 @@ async function launchOtto() {
     
     // Play back the reasoning chain
     for (const step of result.reasoningChain) {
+      Stepper.set(Stepper.agentStage(step.agent));
       const ts = addThinking(`[${step.agent}] Working...`);
       await delay(step.durationMs > 1000 ? 1000 : step.durationMs);
       removeEl(ts);
-      
+
       let providerHtml = '';
       if (step.provider && step.model) {
         providerHtml = `<div class="provider-badge">${step.provider} · ${step.model}</div>`;
       }
-      
+
       addStep(`<strong>${step.agent}</strong>: ${step.reasoning} <br>${providerHtml}`);
+      Sound.tick();
       await delay(300);
     }
+
+    removeSkeletons();
     
     // Set UI state
     state.candidates = result.ranked;
@@ -1126,6 +1433,7 @@ async function launchOtto() {
     DecisionTwin.save(newTwin);
     renderRejectedSection(result.rejected);
     renderOptionsCard(result.ranked.slice(0, 5));
+    renderRadarChart(result.ranked);
     renderDecisionBoard(result.ranked.slice(0, 5));
     renderSavingsPanel(result.ranked, budget);
     
@@ -1141,9 +1449,13 @@ async function launchOtto() {
       <strong>Confidence:</strong> <span class="cv">${confidence}%</span>`
     );
     
-    if(window.speakText) window.speakText(result.finalReasoning);
+    if (window.speakText) {
+      window.speakText(`I recommend ${winner.name} at $${winner.price.toFixed(0)}. Confidence ${confidence} percent. ${result.finalReasoning}`);
+    }
     
     await delay(400);
+    Stepper.set(3);
+    Sound.chime();
     addDivider('HUMAN APPROVAL GATE');
     renderApprovalInline(winner, state.currentTask);
     
@@ -1159,7 +1471,10 @@ async function launchOtto() {
     setActivity('Awaiting approval...', true);
     setStatus('thinking');
     document.getElementById('launch-btn').disabled = false;
-    
+
+    // Land the user on the #1 product, not scrolled past it to the approval gate.
+    setTimeout(scrollToTopPick, 150);
+
   } catch (err) {
     removeEl(t);
     addMsg('error', 'SYSTEM', 'error', `<strong>Pipeline Error:</strong> ${err.message}`);
@@ -1184,6 +1499,7 @@ async function handleApproveInline() {
   // Also close overlay modal if open
   document.getElementById('approval-modal').style.display = 'none';
 
+  Stepper.set(4);
   await startStripeCheckout();
 }
 
@@ -1534,23 +1850,22 @@ function renderMissionList() {
 
   container.innerHTML = missions.map(m => {
     const name   = escapeHtml(m.label || m.goal);
-    const win    = m.winner ? escapeHtml(m.winner.name) : '—';
+    const win    = m.winner ? escapeHtml(m.winner.name) : 'No pick';
     const price  = m.winner && typeof m.winner.price === 'number' ? '$' + m.winner.price.toFixed(2) : '';
-    const bought = m.purchased ? '<span class="session-badge">✓ bought</span>' : '';
+    const bought = m.purchased ? '<span class="si-badge">✓</span>' : '';
+    const active = m.id === state.activeMissionId ? 'active' : '';
     return `
-      <div class="session-item ${m.id === state.activeMissionId ? 'active' : ''}" onclick="restoreMission('${m.id}')">
-        <div class="session-item-top">
-          <div class="session-goal">${name}</div>
-          <div class="session-actions">
-            <button class="si-btn" onclick="renameMission('${m.id}',event)" title="Rename">✎</button>
-            <button class="si-btn del" onclick="deleteMission('${m.id}',event)" title="Delete">✕</button>
-          </div>
-        </div>
-        <div class="session-item-bottom">
-          <span class="session-win" title="${win}">${win}</span>
-          ${price ? `<span class="session-price">${price}</span>` : ''}
+      <div class="session-item ${active}" onclick="restoreMission('${m.id}')">
+        <div class="si-goal">${name}</div>
+        <div class="si-meta">
+          <span class="si-win" title="${win}">${win}</span>
+          ${price ? `<span class="si-price">${price}</span>` : ''}
           ${bought}
-          <span class="session-time">${timeAgo(m.ts)}</span>
+          <span class="si-time">${timeAgo(m.ts)}</span>
+        </div>
+        <div class="si-actions">
+          <button class="si-btn" onclick="renameMission('${m.id}',event)" title="Rename">✎</button>
+          <button class="si-btn del" onclick="deleteMission('${m.id}',event)" title="Delete">✕</button>
         </div>
       </div>`;
   }).join('');
@@ -1737,11 +2052,120 @@ document.addEventListener('keydown', e => {
 });
 
 // ══════════════════════════════════════════════
+// SECTION 15b — VOICE (speech input + spoken output)
+// ══════════════════════════════════════════════
+// Uses the free, browser-native Web Speech API:
+//   · SpeechRecognition  → speak your goal, it fills the form
+//   · speechSynthesis    → OTTO reads its recommendation aloud
+// Both are feature-detected; the mic/speaker buttons only appear when supported.
+
+const Voice = {
+  recognition:  null,
+  listening:    false,
+  speakEnabled: JSON.parse(localStorage.getItem('otto_speak') || 'true'),
+
+  supportsInput()  { return 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window; },
+  supportsOutput() { return 'speechSynthesis' in window; },
+
+  init() {
+    if (this.supportsOutput()) {
+      const sp = document.getElementById('speaker-toggle');
+      if (sp) { sp.style.display = 'flex'; this.reflectSpeaker(); }
+    }
+    if (this.supportsInput()) {
+      const mic = document.getElementById('mic-btn');
+      if (mic) mic.style.display = 'flex';
+
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const rec = new SR();
+      rec.lang            = 'en-US';
+      rec.interimResults  = true;
+      rec.continuous      = false;
+      rec.onresult = (e) => this.onResult(e);
+      rec.onend    = ()  => this.stopListening();
+      rec.onerror  = ()  => this.stopListening();
+      this.recognition = rec;
+    }
+  },
+
+  toggleInput() {
+    if (!this.recognition) return;
+    if (this.listening) { this.recognition.stop(); return; }
+    try {
+      this.recognition.start();
+      this.listening = true;
+      document.getElementById('mic-btn')?.classList.add('listening');
+    } catch { /* start() throws if already running — ignore */ }
+  },
+
+  stopListening() {
+    this.listening = false;
+    document.getElementById('mic-btn')?.classList.remove('listening');
+  },
+
+  onResult(e) {
+    let transcript = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) transcript += e.results[i][0].transcript;
+    transcript = transcript.trim();
+    if (!transcript) return;
+
+    const goal = document.getElementById('goal-input');
+    goal.value = transcript.charAt(0).toUpperCase() + transcript.slice(1);
+    checkBudgetRange();
+
+    // On the final phrase, try to pull a budget out of natural speech.
+    if (e.results[e.results.length - 1].isFinal) this.applyBudgetFromSpeech(transcript);
+  },
+
+  // "headphones under 200" / "around $150" / "for 80 dollars" → fills budget.
+  applyBudgetFromSpeech(text) {
+    const m = text.match(/(?:under|below|less than|max|budget|around|about|for|up to)\s*\$?\s*(\d{1,6})/i)
+           || text.match(/\$\s*(\d{1,6})/)
+           || text.match(/(\d{1,6})\s*(?:dollars|bucks|usd)/i);
+    const n = m ? Number(m[1]) : null;
+    const b = document.getElementById('budget-input');
+    if (n && n > 0 && !b.value) { b.value = n; _budgetWarnDismissedFor = null; checkBudgetRange(); }
+  },
+
+  speak(text) {
+    if (!this.speakEnabled || !this.supportsOutput() || !text) return;
+    try {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(String(text));
+      u.lang = 'en-US';
+      u.rate = 1.03;
+      window.speechSynthesis.speak(u);
+    } catch { /* TTS unavailable — non-fatal */ }
+  },
+
+  toggleSpeaker() {
+    this.speakEnabled = !this.speakEnabled;
+    localStorage.setItem('otto_speak', JSON.stringify(this.speakEnabled));
+    if (!this.speakEnabled && this.supportsOutput()) window.speechSynthesis.cancel();
+    this.reflectSpeaker();
+  },
+
+  reflectSpeaker() {
+    const sp = document.getElementById('speaker-toggle');
+    if (!sp) return;
+    sp.classList.toggle('muted', !this.speakEnabled);
+    sp.title = this.speakEnabled ? 'Voice Output On — click to mute' : 'Voice Output Off — click to enable';
+  },
+};
+
+// Global handlers referenced from index.html (onclick + window.speakText).
+function toggleVoiceInput() { Voice.toggleInput(); }
+function toggleSpeaker()    { Voice.toggleSpeaker(); }
+function speakText(text)    { Voice.speak(text); }
+window.speakText = speakText;
+
+// ══════════════════════════════════════════════
 // SECTION 16 — INIT
 // ══════════════════════════════════════════════
 
 (function init() {
   initSliders();
+  Voice.init();
   renderMissionList();
 
   // Budget guidance — re-check whenever the budget or goal changes.
