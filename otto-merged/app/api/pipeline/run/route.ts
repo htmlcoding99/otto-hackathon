@@ -13,6 +13,13 @@ import { logger } from "@/lib/logger";
 import { HTTP_STATUS } from "@/types/api";
 import { v4 as uuidv4 } from "uuid";
 
+// ── Runtime config ────────────────────────────────────────────────────────────
+// The 6-stage pipeline makes several sequential Bedrock calls and can take
+// ~25-30s. Without this, Vercel kills the function at its short default timeout
+// and the browser sees a generic "Internal Server Error". Run on Node, allow 60s.
+export const runtime = "nodejs";
+export const maxDuration = 60;
+
 // ── Request schema ────────────────────────────────────────────────────────────
 
 const pipelineRunSchema = z.object({
