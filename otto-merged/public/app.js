@@ -1411,6 +1411,30 @@ function removeSkeletons() { removeEl(document.getElementById('skeleton-card'));
 // SECTION 8 — MAIN LAUNCH FLOW
 // ══════════════════════════════════════════════
 
+// Client-side content check — instant feedback before the live pipeline runs.
+// The server (/api/pipeline/run + /api/budget/estimate) enforces the same rules
+// authoritatively; this just saves the user a round-trip. Word-boundary matching
+// avoids false positives ("meth" won't match "method").
+const PROHIBITED_TERMS = {
+  'illegal drugs': ['meth','methamphetamine','crystal meth','cocaine','crack cocaine','heroin','fentanyl','mdma','ecstasy','lsd','pcp','opium','magic mushrooms','illegal drugs'],
+  'weapons or explosives': ['firearm','firearms','handgun','handguns','pistol','rifle','shotgun','ammunition','ammo','assault rifle','machine gun','ghost gun','ar-15','ak-47','silencer','suppressor','grenade','explosive','explosives','dynamite','tnt','c4','pipe bomb','bomb','anthrax','sarin','ricin'],
+  'explicit content': ['porn','pornography','child porn','csam','escort service','prostitute','prostitution'],
+  'violence or other illegal activity': ['hitman','hit man','assassin','assassinate','kill someone','human trafficking'],
+};
+
+function flagProhibitedInput(...parts) {
+  const text = parts.filter(Boolean).join(' ');
+  if (!text.trim()) return null;
+  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  for (const [label, terms] of Object.entries(PROHIBITED_TERMS)) {
+    const re = new RegExp(`\\b(?:${terms.map(esc).join('|')})\\b`, 'i');
+    if (re.test(text)) {
+      return `This request was flagged because it appears to involve ${label}. OTTO only helps with legitimate shopping — please revise your request.`;
+    }
+  }
+  return null;
+}
+
 async function launchOtto() {
   const goal        = document.getElementById('goal-input').value.trim();
   const budgetRaw   = document.getElementById('budget-input').value;
@@ -1425,6 +1449,18 @@ async function launchOtto() {
   if (!budgetRaw || parseFloat(budgetRaw) <= 0) {
     document.getElementById('budget-input').style.animation = 'shake 0.4s ease';
     setTimeout(() => document.getElementById('budget-input').style.animation = '', 500);
+    return;
+  }
+
+  // Content moderation — block prohibited requests before launching the pipeline.
+  const flagged = flagProhibitedInput(goal, constraints);
+  if (flagged) {
+    const gi = document.getElementById('goal-input');
+    gi.style.animation = 'shake 0.4s ease';
+    setTimeout(() => gi.style.animation = '', 500);
+    showFeed();
+    addMsg('error', 'SYSTEM', 'warning', `<strong>Request blocked:</strong> ${flagged}`);
+    setStatus('ready');
     return;
   }
 

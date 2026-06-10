@@ -9,6 +9,7 @@ import { ok, err, toApiError } from "@/lib/api-response";
 import { validateBody } from "@/lib/validate";
 import { OttoError } from "@/lib/errors";
 import { runOttoPipeline } from "@/agents/pipeline";
+import { moderateText } from "@/lib/moderation";
 import { logger } from "@/lib/logger";
 import { HTTP_STATUS } from "@/types/api";
 import { v4 as uuidv4 } from "uuid";
@@ -68,6 +69,17 @@ export async function POST(request: NextRequest) {
   }
 
   const { goal, budget, urgency, constraints, weights, existingProfile, pastMissions } = validation.data;
+
+  // Content moderation — reject prohibited requests before the live pipeline.
+  const moderation = moderateText(goal, constraints);
+  if (!moderation.allowed) {
+    logger.warn("POST /api/pipeline/run", "Request blocked by moderation", { category: moderation.category });
+    return err(
+      { code: "CONTENT_BLOCKED", message: moderation.reason! },
+      { status: HTTP_STATUS.UNPROCESSABLE, durationMs: Date.now() - start }
+    );
+  }
+
   const taskId = uuidv4();
 
   logger.info("POST /api/pipeline/run", "Pipeline run initiated", { taskId, goal });

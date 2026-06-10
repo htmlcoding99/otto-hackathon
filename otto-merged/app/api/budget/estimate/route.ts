@@ -11,6 +11,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { CandidateService } from "@/services/candidate.service";
+import { moderateText } from "@/lib/moderation";
 import { logger } from "@/lib/logger";
 
 const schema = z.object({
@@ -33,6 +34,12 @@ export async function POST(request: NextRequest) {
   }
 
   const { goal, budget, constraints } = parsed.data;
+
+  // Don't run a live search for prohibited content.
+  const moderation = moderateText(goal, constraints);
+  if (!moderation.allowed) {
+    return NextResponse.json({ error: moderation.reason, code: "CONTENT_BLOCKED" }, { status: 422 });
+  }
 
   try {
     const candidates = await CandidateService.fetch({
