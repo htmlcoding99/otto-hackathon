@@ -2675,6 +2675,29 @@ input[type=number] { -moz-appearance: textfield; }
 /* ── Approval inline container ── */
 #approval-inline-el { animation: msg-in 0.4s ease; }
 
+/* ══════════ CREDIT WATERMARK — subtle, non-interactive ══════════ */
+.credit-watermark {
+  position: fixed;
+  bottom: 7px;
+  right: 13px;
+  z-index: 30;
+  pointer-events: none;          /* never intercepts clicks */
+  user-select: none;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: var(--t3);
+  opacity: 0.6;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+.credit-watermark b {
+  font-weight: 700;
+  background: var(--grad-brand);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 /* ══════════ HOVER POLISH — subtle, on-brand micro-interactions ══════════ */
 /* Reuses the established hover language: violet-tinted borders
    (rgba(192,132,252,…)), bg-hover, and small 1px lifts. Nothing flashy. */
