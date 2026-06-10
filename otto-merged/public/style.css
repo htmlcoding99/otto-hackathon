@@ -279,6 +279,12 @@ html, body {
   color: var(--amber, #fbbf24);
   margin-bottom: 5px;
 }
+/* Positive "budget looks good" variant (green instead of amber) */
+.budget-warning.bw-ok {
+  border-color: rgba(52,211,153,0.35);
+  background: linear-gradient(180deg, rgba(52,211,153,0.12), rgba(52,211,153,0.04));
+}
+.budget-warning .bw-head-ok { color: var(--emerald, #34d399); }
 .budget-warning .bw-close {
   margin-left: auto;
   background: none;
@@ -1305,14 +1311,18 @@ input[type=number] { -moz-appearance: textfield; }
 .opt-banner {
   display: block;
   width: 100%;
-  height: 150px;
-  object-fit: cover;
+  height: auto;
+  max-height: 320px;
+  object-fit: contain;          /* show the whole product image, no cropping */
   border-radius: 10px;
   margin-bottom: 11px;
   background: var(--bg-hover);
   border: 1px solid var(--border);
 }
-.opt-banner.opt-thumb-ph { font-size: 34px; }
+.opt-banner.opt-thumb-ph {
+  height: 120px;                /* placeholder tile needs an explicit height */
+  font-size: 34px;
+}
 
 /* Clickable product name → opens the real listing in a new tab */
 .opt-name-link {
@@ -1337,6 +1347,38 @@ input[type=number] { -moz-appearance: textfield; }
 }
 .opt-link:hover { text-decoration: underline; }
 .opt-link svg { flex-shrink: 0; }
+
+/* Per-product action row + "Authorise & Pay" button */
+.opt-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 9px;
+}
+.opt-buy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--grad-brand);
+  border: none;
+  border-radius: 8px;
+  padding: 7px 13px;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.2s, filter 0.2s;
+}
+.opt-buy:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(124,58,237,0.35);
+  filter: brightness(1.06);
+}
+.opt-buy:active { transform: scale(0.98); }
+.opt-buy svg { flex-shrink: 0; }
+/* the view-product link already has a left margin; remove it inside the row */
+.opt-actions .opt-link { margin-left: 0; }
 
 .opt-badges {
   display: flex;

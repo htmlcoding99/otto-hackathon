@@ -132,7 +132,7 @@ const DecisionTwin = {
     if (count) {
       const n = profile.decisionCount || 0;
       count.style.display = '';
-      count.textContent = n + (n === 1 ? ' mission learned' : ' missions learned');
+      count.textContent = n + (n === 1 ? ' search learned' : ' searches learned');
     }
 
     const note = document.getElementById('twin-note');
@@ -330,31 +330,49 @@ function showBudgetLoading() {
 
 function renderBudgetWarning(range, budget) {
   const card = document.getElementById('budget-warning');
-
-  // Only warn when the budget is well above the priciest live option (>50% over).
-  if (!budget || budget <= 0 || budget <= range.max * 1.5) { card.style.display = 'none'; return; }
-  if (_budgetWarnDismissedFor === budget) { card.style.display = 'none'; return; }
+  if (!budget || budget <= 0) { card.style.display = 'none'; return; }
 
   const lo = Math.floor(range.min);
   const hi = Math.ceil(range.max);
 
+  // Budget well above the priciest live option (>50% over) → gentle nudge.
+  if (budget > range.max * 1.5) {
+    if (_budgetWarnDismissedFor === budget) { card.style.display = 'none'; return; }
+    card.classList.remove('bw-ok');
+    card.innerHTML = `
+      <div class="bw-head">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        Budget looks high
+        <button class="bw-close" onclick="dismissBudgetWarning()" aria-label="Dismiss">✕</button>
+      </div>
+      <div class="bw-msg">
+        $${budget.toFixed(0)} is well above the live prices we found for this
+        (${range.count} real result${range.count === 1 ? '' : 's'} from the web).
+        You'll likely get great options for less.
+      </div>
+      <div class="bw-range">
+        <span class="bw-range-pill">$${lo} – $${hi}</span>
+        <button class="bw-apply" onclick="applyRecommendedBudget(${hi})">Use $${hi}</button>
+      </div>`;
+    card.style.display = 'block';
+    return;
+  }
+
+  // Otherwise the budget sits in a sensible range → positive confirmation.
+  card.classList.add('bw-ok');
   card.innerHTML = `
-    <div class="bw-head">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+    <div class="bw-head bw-head-ok">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6">
+        <polyline points="20 6 9 17 4 12"/>
       </svg>
-      Budget looks high
-      <button class="bw-close" onclick="dismissBudgetWarning()" aria-label="Dismiss">✕</button>
+      Budget looks good
     </div>
     <div class="bw-msg">
-      $${budget.toFixed(0)} is well above the live prices we found for this
-      (${range.count} real result${range.count === 1 ? '' : 's'} from the web).
-      You'll likely get great options for less.
-    </div>
-    <div class="bw-range">
-      <span class="bw-range-pill">$${lo} – $${hi}</span>
-      <button class="bw-apply" onclick="applyRecommendedBudget(${hi})">Use $${hi}</button>
+      We found ${range.count} real option${range.count === 1 ? '' : 's'} from the web in the
+      <strong>$${lo}–$${hi}</strong> range — your budget fits nicely.
     </div>`;
   card.style.display = 'block';
 }
@@ -623,16 +641,66 @@ function setStatus(state_) {
   else { text.textContent = 'Ready'; }
 }
 
+// ── Custom slow/smooth auto-scroll ──────────────────────────────────────────
+// The browser's native smooth scroll is fast and abrupt; this animates the real
+// scroll container (feed-wrap on desktop, the window on mobile) over a longer
+// duration with easing so the feed glides instead of jumping.
+
+// Find the nearest actually-scrollable ancestor; null means the window scrolls.
+function getScrollParent(el) {
+  let p = el && el.parentElement;
+  while (p && p !== document.body && p !== document.documentElement) {
+    const oy = getComputedStyle(p).overflowY;
+    if ((oy === 'auto' || oy === 'scroll') && p.scrollHeight > p.clientHeight + 1) return p;
+    p = p.parentElement;
+  }
+  return null;
+}
+
+function _animateScroll(scroller, dest, duration) {
+  const isWin = scroller === window;
+  const start = isWin ? window.pageYOffset : scroller.scrollTop;
+  const max = isWin
+    ? document.documentElement.scrollHeight - window.innerHeight
+    : scroller.scrollHeight - scroller.clientHeight;
+  const target = Math.max(0, Math.min(dest, max));
+  const dist = target - start;
+  if (Math.abs(dist) < 2) return;
+
+  const t0 = performance.now();
+  const ease = (p) => (p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2); // easeInOutQuad
+  (function step(now) {
+    const p = Math.min(1, (now - t0) / duration);
+    const y = start + dist * ease(p);
+    if (isWin) window.scrollTo(0, y); else scroller.scrollTop = y;
+    if (p < 1) requestAnimationFrame(step);
+  })(performance.now());
+}
+
+// block: 'end' → bring el's bottom into view; 'start' → align el to the top.
+function smoothScrollToEl(el, block = 'end', duration = 900) {
+  if (!el) return;
+  const parent = getScrollParent(el);
+  const isWin = !parent;
+  const elRect = el.getBoundingClientRect();
+  const parTop = isWin ? 0 : parent.getBoundingClientRect().top;
+  const parH = isWin ? window.innerHeight : parent.clientHeight;
+  const cur = isWin ? window.pageYOffset : parent.scrollTop;
+  const delta = block === 'start'
+    ? (elRect.top - parTop) - 14
+    : (elRect.bottom - (parTop + parH)) + 18;
+  _animateScroll(isWin ? window : parent, cur + delta, duration);
+}
+
 function scrollFeedBottom() {
-  const el = document.getElementById('feed-bottom');
-  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  smoothScrollToEl(document.getElementById('feed-bottom'), 'end', 850);
 }
 
 // Once results are in, rest the view on the #1 ranked product (top of the
 // options card) instead of scrolling past everything to the approval gate.
 function scrollToTopPick() {
   const card = document.getElementById('options-card');
-  if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (card) smoothScrollToEl(card, 'start', 1000);
   else scrollFeedBottom();
 }
 
@@ -830,9 +898,25 @@ function renderCandidateCard(c, rank, total) {
       </details>
       <div class="opt-final-score" style="margin-top:6px">
         Final Score: <span class="fscore">${finalScore}</span>
+      </div>
+      <div class="opt-actions">
+        <button class="opt-buy" onclick="buyCandidate('${c.id}')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+          Authorise &amp; Pay · $${c.price.toFixed(2)}
+        </button>
         ${viewLink}
       </div>
     </div>`;
+}
+
+// Let the user pick ANY product to buy (not just OTTO's #1). Sets it as the
+// chosen winner and jumps straight to secure checkout.
+function buyCandidate(id) {
+  const c = (state.candidates || []).find(x => x.id === id);
+  if (!c) return;
+  state.winner = c;
+  state.approvalPending = true;
+  handleApproveInline();
 }
 
 // Swap a broken product image for the placeholder tile (Exa thumbnails can
@@ -1047,21 +1131,21 @@ function renderApprovalInline(winner, task) {
           </svg>
         </div>
         <div>
-          <div class="approval-title">⚡ Human Approval Required</div>
+          <div class="approval-title">✅ Ready when you are</div>
           <div class="approval-sub">
-            OTTO recommends <strong class="cv">${winner.name}</strong> at <strong class="ce">$${winner.price.toFixed(2)}</strong> 
-            — saving approximately <strong class="ce">$${saved}</strong>. 
-            Confidence: <strong class="cv">${confidence}%</strong>.
+            OTTO's top pick is <strong class="cv">${winner.name}</strong> at <strong class="ce">$${winner.price.toFixed(2)}</strong>
+            — saving about <strong class="ce">$${saved}</strong>.
+            Confidence: <strong class="cv">${confidence}%</strong>. You can authorise this one, pick another above, or see more options.
           </div>
         </div>
       </div>
       <div class="approval-actions">
         <button class="btn-inline-approve" onclick="handleApproveInline()">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-          Approve &amp; Execute
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+          Authorise &amp; Pay · $${winner.price.toFixed(2)}
         </button>
-        <button class="btn-inline-alt" onclick="handleAlternatives()">Show Alternatives</button>
-        <button class="btn-inline-report" onclick="showReport()">View Report</button>
+        <button class="btn-inline-alt" onclick="handleAlternatives()">See other options</button>
+        <button class="btn-inline-report" onclick="showReport()">View details</button>
       </div>
     </div>`;
   container.appendChild(div);
@@ -1181,7 +1265,7 @@ function renderDecisionReport() {
       <p>${goal}</p>
     </div>
     <div class="report-section">
-      <div class="report-section-title">Decision Twin Profile</div>
+      <div class="report-section-title">Your Preferences</div>
       <ul>${twinRows}</ul>
       <p style="margin-top:6px;font-style:italic;color:var(--sky)">Insight: ${DecisionTwin.getInsight(profile)}</p>
     </div>
@@ -1456,7 +1540,7 @@ async function launchOtto() {
     await delay(400);
     Stepper.set(3);
     Sound.chime();
-    addDivider('HUMAN APPROVAL GATE');
+    addDivider('AUTHORISE PURCHASE');
     renderApprovalInline(winner, state.currentTask);
     
     state.reportData = {
@@ -1834,7 +1918,7 @@ function renderMissionList() {
   if (tools) tools.style.display = all.length ? 'flex' : 'none';
 
   if (!all.length) {
-    container.innerHTML = '<div class="session-empty">No missions yet. Launch one to start your log.</div>';
+    container.innerHTML = '<div class="session-empty">No results yet. Run a search to see them here.</div>';
     return;
   }
 
@@ -1947,7 +2031,7 @@ function restoreMission(id) {
      ${snap.finalReasoning || ''}<br><br>
      <strong>Confidence:</strong> <span class="cv">${snap.confidence}%</span>`
   );
-  addMsg('default', 'OTTO', 'otto', 'This is a saved mission. Hit <strong>New</strong> in the Mission Log to start a fresh one.');
+  addMsg('default', 'OTTO', 'otto', 'This is a saved result. Hit <strong>New</strong> in Past Results to start a fresh one.');
 
   renderMissionList();
   setActivity('Viewing saved chat', false);

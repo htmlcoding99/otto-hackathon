@@ -54,12 +54,12 @@
             <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
           </svg>
         </button>
-        <div class="twin-badge" id="twin-badge" title="Decision Twin profile loaded">
+        <div class="twin-badge" id="twin-badge" title="Your preferences profile loaded">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
             <circle cx="12" cy="7" r="4"/>
           </svg>
-          Decision Twin
+          Your Preferences
           <span class="twin-dot" id="twin-dot"></span>
         </div>
         <div class="status-indicator">
@@ -212,12 +212,12 @@
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
             </svg>
-            Decision Twin
+            Your Preferences
           </span>
           <span class="twin-count" id="twin-count" style="display:none">0 learned</span>
         </div>
         <div class="twin-panel" id="twin-panel">
-          <div class="twin-empty">No profile yet. Run a mission to start building your Decision Twin.</div>
+          <div class="twin-empty">No profile yet. Run a search to start building your preferences.</div>
           <div class="twin-profile" id="twin-profile" style="display:none">
             <div class="twin-row">
               <span class="twin-label">Budget Sensitivity</span>
@@ -262,7 +262,7 @@
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
             </svg>
-            Mission Log
+            Past Results
           </span>
           <button class="btn-new-chat" id="btn-new-chat" onclick="newChat()" title="Start a new mission">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -306,7 +306,7 @@
         <h1 class="welcome-title">Meet OTTO</h1>
         <p class="welcome-subtitle">Your transparent autonomous decision engine. I research, evaluate, score, explain, and execute — while keeping you in control of every decision.</p>
         <div class="welcome-pills">
-          <div class="pill">🧠 Decision Twin AI</div>
+          <div class="pill">🧠 Learns Your Preferences</div>
           <div class="pill">🔍 Live Web Research</div>
           <div class="pill">⚖️ Multi-Criteria Scoring</div>
           <div class="pill">💰 Value Optimizer</div>
@@ -401,8 +401,8 @@
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
           </svg>
         </div>
-        <h2 class="modal-title">Human Approval Required</h2>
-        <p class="modal-subtitle">OTTO will not proceed without your explicit approval</p>
+        <h2 class="modal-title">Authorise your purchase</h2>
+        <p class="modal-subtitle">OTTO won't buy anything without your go-ahead</p>
       </div>
       <div class="modal-body" id="modal-body"></div>
       <div class="modal-actions">
@@ -410,7 +410,7 @@
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <polyline points="20 6 9 17 4 12"/>
           </svg>
-          Approve &amp; Execute
+          Authorise &amp; Pay
         </button>
         <button class="btn-modal-alt" onclick="handleAlternatives()">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -435,7 +435,7 @@
           </svg>
         </div>
       </div>
-      <h3 class="payment-title">Processing Payment</h3>
+      <h3 class="payment-title">Authorising your order</h3>
       <p class="payment-sub" id="payment-sub">Connecting to Stripe...</p>
       <div class="payment-steps">
         <div class="pstep" id="pstep-1"><div class="pstep-dot"></div><span>Initializing secure session</span></div>
