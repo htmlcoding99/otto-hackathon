@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OTTO — Autonomous Decision Engine</title>
+  <meta name="description" content="OTTO is your autonomous decision-making and execution agent. It researches, evaluates, scores, and acts — with full transparency." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="voice.css" />
+</head>
+<body>
+  <!-- Background Canvas -->
+  <canvas id="bg-canvas"></canvas>
+
+  <!-- ══════════ HEADER ══════════ -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <div class="logo-orb">
+          <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+            <circle cx="16" cy="16" r="13" stroke="url(#hg)" stroke-width="1.5"/>
+            <circle cx="16" cy="16" r="5" fill="url(#hg)"/>
+            <circle cx="16" cy="5"  r="1.8" fill="url(#hg)"/>
+            <circle cx="16" cy="27" r="1.8" fill="url(#hg)"/>
+            <circle cx="5"  cy="16" r="1.8" fill="url(#hg)"/>
+            <circle cx="27" cy="16" r="1.8" fill="url(#hg)"/>
+            <defs>
+              <linearGradient id="hg" x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#c084fc"/>
+                <stop offset="1" stop-color="#38bdf8"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <span class="logo-text">OTTO</span>
+        <span class="logo-badge">DECISION ENGINE</span>
+      </div>
+
+      <div class="header-center" id="activity-stream">
+        <div class="activity-idle" id="activity-idle">Autonomous Decision Agent · Ready</div>
+        <div class="activity-running" id="activity-running" style="display:none">
+          <div class="activity-pulse"></div>
+          <span id="activity-text">Initializing...</span>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <button id="speaker-toggle" class="header-icon-btn" onclick="toggleSpeaker()" title="Voice Output On" style="display:none">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+          </svg>
+        </button>
+        <div class="twin-badge" id="twin-badge" title="Decision Twin profile loaded">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+          Decision Twin
+          <span class="twin-dot" id="twin-dot"></span>
+        </div>
+        <div class="status-indicator">
+          <div class="status-dot" id="status-dot"></div>
+          <span id="status-text">Ready</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ══════════ MAIN LAYOUT ══════════ -->
+  <main class="main-layout">
+
+    <!-- ── LEFT SIDEBAR ── -->
+    <aside class="sidebar">
+
+      <!-- Mission Control -->
+      <div class="sidebar-section">
+        <div class="section-header">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/>
+          </svg>
+          Mission Control
+        </div>
+        <div class="mission-form">
+          <div class="form-group">
+            <label class="form-label" for="goal-input">Your Goal</label>
+            <div class="goal-input-wrap">
+              <textarea id="goal-input" class="form-textarea" placeholder="e.g. Buy a birthday gift for my sister who loves skincare and cooking..." rows="3"></textarea>
+              <button id="mic-btn" class="mic-btn" onclick="toggleVoiceInput()" title="Speak your goal" style="display:none">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                  <line x1="12" y1="19" x2="12" y2="23"></line>
+                  <line x1="8" y1="23" x2="16" y2="23"></line>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label class="form-label" for="budget-input">Budget</label>
+              <div class="budget-wrap">
+                <span class="budget-prefix">$</span>
+                <input type="number" id="budget-input" class="form-input budget-input" placeholder="100" min="1"/>
+              </div>
+            </div>
+            <div class="form-group flex-1">
+              <label class="form-label" for="urgency-input">Urgency</label>
+              <select id="urgency-input" class="form-select">
+                <option value="flexible">Flexible</option>
+                <option value="standard">Standard</option>
+                <option value="urgent">Urgent (2-day)</option>
+                <option value="same-day">Same Day</option>
+              </select>
+            </div>
+          </div>
+          <!-- Budget guidance card (shown when budget is unusually high) -->
+          <div class="budget-warning" id="budget-warning" style="display:none"></div>
+
+          <div class="form-group">
+            <label class="form-label" for="constraints-input">Constraints <span class="label-opt">optional</span></label>
+            <input type="text" id="constraints-input" class="form-input" placeholder="eco-friendly, cruelty-free, premium quality..."/>
+          </div>
+
+          <!-- Priority sliders -->
+          <div class="form-group">
+            <label class="form-label">Priority Weights</label>
+            <div class="sliders">
+              <div class="slider-row">
+                <span class="slider-label">💰 Value</span>
+                <input type="range" id="weight-value" class="otto-slider" min="0" max="10" value="7"/>
+                <span class="slider-val" id="wv-val">7</span>
+              </div>
+              <div class="slider-row">
+                <span class="slider-label">⚡ Speed</span>
+                <input type="range" id="weight-speed" class="otto-slider" min="0" max="10" value="5"/>
+                <span class="slider-val" id="ws-val">5</span>
+              </div>
+              <div class="slider-row">
+                <span class="slider-label">🏆 Quality</span>
+                <input type="range" id="weight-quality" class="otto-slider" min="0" max="10" value="6"/>
+                <span class="slider-val" id="wq-val">6</span>
+              </div>
+            </div>
+          </div>
+
+          <button class="btn-launch" id="launch-btn" onclick="launchOtto()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polygon points="5 3 19 12 5 21 5 3"/>
+            </svg>
+            <span>Launch OTTO</span>
+            <kbd class="btn-kbd">⌘↵</kbd>
+            <div class="btn-shine"></div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Demos -->
+      <div class="sidebar-section">
+        <div class="section-header">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+          </svg>
+          Quick Demos
+        </div>
+        <div class="demo-presets">
+          <button class="preset-btn" onclick="loadPreset('matcha')" id="preset-matcha">
+            <span class="preset-emoji">🍵</span>
+            <div class="preset-info">
+              <div class="preset-name">Matcha Gift Set</div>
+              <div class="preset-meta">Under $60 · Fast ship</div>
+            </div>
+          </button>
+          <button class="preset-btn" onclick="loadPreset('skincare')" id="preset-skincare">
+            <span class="preset-emoji">✨</span>
+            <div class="preset-info">
+              <div class="preset-name">Skincare Bundle</div>
+              <div class="preset-meta">Under $80 · Cruelty-free</div>
+            </div>
+          </button>
+          <button class="preset-btn" onclick="loadPreset('coffee')" id="preset-coffee">
+            <span class="preset-emoji">☕</span>
+            <div class="preset-info">
+              <div class="preset-name">Coffee Gear</div>
+              <div class="preset-meta">Under $120 · Beginner kit</div>
+            </div>
+          </button>
+          <button class="preset-btn" onclick="loadPreset('book')" id="preset-book">
+            <span class="preset-emoji">📚</span>
+            <div class="preset-info">
+              <div class="preset-name">Book + Journal</div>
+              <div class="preset-meta">Under $45 · For writers</div>
+            </div>
+          </button>
+          <button class="preset-btn" onclick="loadPreset('headphones')" id="preset-headphones">
+            <span class="preset-emoji">🎧</span>
+            <div class="preset-info">
+              <div class="preset-name">Wireless Headphones</div>
+              <div class="preset-meta">Under $200 · Best sound</div>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Decision Twin -->
+      <div class="sidebar-section">
+        <div class="section-header section-header-row">
+          <span class="section-header-title">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+            </svg>
+            Decision Twin
+          </span>
+          <span class="twin-count" id="twin-count" style="display:none">0 learned</span>
+        </div>
+        <div class="twin-panel" id="twin-panel">
+          <div class="twin-empty">No profile yet. Run a mission to start building your Decision Twin.</div>
+          <div class="twin-profile" id="twin-profile" style="display:none">
+            <div class="twin-row">
+              <span class="twin-label">Budget Sensitivity</span>
+              <div class="twin-bar-wrap"><div class="twin-bar" id="tb-budget"></div></div>
+              <span class="twin-delta" id="td-budget"></span>
+              <span class="twin-score" id="ts-budget">—</span>
+            </div>
+            <div class="twin-row">
+              <span class="twin-label">Delivery Priority</span>
+              <div class="twin-bar-wrap"><div class="twin-bar" id="tb-delivery"></div></div>
+              <span class="twin-delta" id="td-delivery"></span>
+              <span class="twin-score" id="ts-delivery">—</span>
+            </div>
+            <div class="twin-row">
+              <span class="twin-label">Quality Focus</span>
+              <div class="twin-bar-wrap"><div class="twin-bar" id="tb-quality"></div></div>
+              <span class="twin-delta" id="td-quality"></span>
+              <span class="twin-score" id="ts-quality">—</span>
+            </div>
+            <div class="twin-row">
+              <span class="twin-label">Value Orientation</span>
+              <div class="twin-bar-wrap"><div class="twin-bar" id="tb-value"></div></div>
+              <span class="twin-delta" id="td-value"></span>
+              <span class="twin-score" id="ts-value">—</span>
+            </div>
+            <div class="twin-row">
+              <span class="twin-label">Risk Tolerance</span>
+              <div class="twin-bar-wrap"><div class="twin-bar" id="tb-risk"></div></div>
+              <span class="twin-delta" id="td-risk"></span>
+              <span class="twin-score" id="ts-risk">—</span>
+            </div>
+            <div class="twin-note" id="twin-note"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mission Log / Session History -->
+      <div class="sidebar-section">
+        <div class="section-header section-header-row">
+          <span class="section-header-title">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+            Mission Log
+          </span>
+          <button class="btn-new-chat" id="btn-new-chat" onclick="newChat()" title="Start a new mission">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            New
+          </button>
+        </div>
+        <div class="chat-tools" id="chat-tools" style="display:none">
+          <input type="text" id="chat-search" class="chat-search" placeholder="Search missions…" oninput="onChatSearch(this.value)" />
+          <button class="btn-clear-chats" onclick="clearAllMissions()" title="Delete all missions">Clear</button>
+        </div>
+        <div class="session-log" id="session-log">
+          <div class="session-empty">No missions yet. Launch one to start your log.</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ── MAIN FEED ── -->
+    <section class="agent-feed" id="agent-feed">
+
+      <!-- Welcome State -->
+      <div class="welcome-state" id="welcome-state">
+        <div class="welcome-orb">
+          <div class="orb-ring r1"></div>
+          <div class="orb-ring r2"></div>
+          <div class="orb-ring r3"></div>
+          <div class="orb-core">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="url(#wg)" stroke-width="1.5">
+              <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+              <path d="M2 17l10 5 10-5"/>
+              <path d="M2 12l10 5 10-5"/>
+              <defs>
+                <linearGradient id="wg" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
+                  <stop stop-color="#c084fc"/><stop offset="1" stop-color="#38bdf8"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+        </div>
+        <h1 class="welcome-title">Meet OTTO</h1>
+        <p class="welcome-subtitle">Your transparent autonomous decision engine. I research, evaluate, score, explain, and execute — while keeping you in control of every decision.</p>
+        <div class="welcome-pills">
+          <div class="pill">🧠 Decision Twin AI</div>
+          <div class="pill">🔍 Live Web Research</div>
+          <div class="pill">⚖️ Multi-Criteria Scoring</div>
+          <div class="pill">💰 Value Optimizer</div>
+          <div class="pill">✅ Human Approval Gate</div>
+        </div>
+      </div>
+
+      <!-- Feed -->
+      <div class="feed-wrap" id="feed-wrap" style="display:none">
+        <div class="feed-messages" id="feed-messages"></div>
+        <div id="feed-bottom"></div>
+      </div>
+
+    </section>
+
+    <!-- ── RIGHT PANEL (Decision Board) ── -->
+    <aside class="decision-panel" id="decision-panel" style="display:none">
+
+      <!-- Re-ranking Controls -->
+      <div class="dp-section" id="rerank-section" style="display:none">
+        <div class="section-header">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="4" y1="6" x2="11" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/>
+            <line x1="4" y1="18" x2="13" y2="18"/>
+            <circle cx="14" cy="6" r="3"/><circle cx="23" cy="12" r="3"/>
+          </svg>
+          Dynamic Re-ranking
+        </div>
+        <div class="rerank-controls">
+          <div class="rerank-hint">Adjust to instantly recompute rankings</div>
+          <div class="rerank-row">
+            <label>Max Budget</label>
+            <div class="budget-wrap small">
+              <span class="budget-prefix">$</span>
+              <input type="number" id="rr-budget" class="form-input budget-input small" placeholder="—"/>
+            </div>
+          </div>
+          <div class="rerank-row">
+            <label>Value Weight</label>
+            <input type="range" id="rr-value" class="otto-slider" min="0" max="10" value="7"/>
+          </div>
+          <div class="rerank-row">
+            <label>Speed Weight</label>
+            <input type="range" id="rr-speed" class="otto-slider" min="0" max="10" value="5"/>
+          </div>
+          <div class="rerank-row">
+            <label>Quality Weight</label>
+            <input type="range" id="rr-quality" class="otto-slider" min="0" max="10" value="6"/>
+          </div>
+          <button class="btn-rerank" id="btn-rerank" onclick="rerank()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/>
+            </svg>
+            Recompute Rankings
+          </button>
+        </div>
+      </div>
+
+      <!-- Decision Board -->
+      <div class="dp-section" id="scoreboard-section" style="display:none">
+        <div class="section-header">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+          </svg>
+          Decision Board
+        </div>
+        <div class="scoreboard" id="scoreboard"></div>
+      </div>
+
+      <!-- Savings Summary -->
+      <div class="dp-section" id="savings-section" style="display:none">
+        <div class="section-header">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="1" x2="12" y2="23"/>
+            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+          Savings Report
+        </div>
+        <div class="savings-panel" id="savings-panel"></div>
+      </div>
+
+    </aside>
+  </main>
+
+  <!-- ══════════ APPROVAL MODAL ══════════ -->
+  <div class="modal-overlay" id="approval-modal" style="display:none">
+    <div class="modal" id="approval-modal-inner">
+      <div class="modal-header">
+        <div class="modal-icon violet">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </div>
+        <h2 class="modal-title">Human Approval Required</h2>
+        <p class="modal-subtitle">OTTO will not proceed without your explicit approval</p>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-actions">
+        <button class="btn-approve" id="btn-approve" onclick="handleApprove()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          Approve &amp; Execute
+        </button>
+        <button class="btn-modal-alt" onclick="handleAlternatives()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+          Alternatives
+        </button>
+        <button class="btn-modal-cancel" onclick="handleCancelModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ PAYMENT MODAL ══════════ -->
+  <div class="modal-overlay" id="payment-modal" style="display:none">
+    <div class="modal payment-modal">
+      <div class="payment-spinner-wrap">
+        <div class="p-ring outer"></div>
+        <div class="p-ring inner"></div>
+        <div class="p-core">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="color:var(--violet)">
+            <path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.591-7.305z"/>
+          </svg>
+        </div>
+      </div>
+      <h3 class="payment-title">Processing Payment</h3>
+      <p class="payment-sub" id="payment-sub">Connecting to Stripe...</p>
+      <div class="payment-steps">
+        <div class="pstep" id="pstep-1"><div class="pstep-dot"></div><span>Initializing secure session</span></div>
+        <div class="pstep" id="pstep-2"><div class="pstep-dot"></div><span>Verifying charge amount</span></div>
+        <div class="pstep" id="pstep-3"><div class="pstep-dot"></div><span>Completing transaction</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ EMBEDDED STRIPE CHECKOUT MODAL ══════════ -->
+  <div class="modal-overlay" id="embedded-modal" style="display:none">
+    <div class="modal embedded-modal">
+      <div class="embedded-head">
+        <span>Secure Checkout</span>
+        <button class="embedded-close" onclick="closeEmbeddedCheckout()" aria-label="Close">✕</button>
+      </div>
+      <div id="embedded-checkout"></div>
+    </div>
+  </div>
+
+  <!-- ══════════ RECEIPT MODAL ══════════ -->
+  <div class="modal-overlay" id="receipt-modal" style="display:none">
+    <div class="modal receipt-modal">
+      <div class="receipt-top">
+        <div class="receipt-check">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <h2>Mission Complete!</h2>
+        <p>OTTO successfully completed your errand</p>
+      </div>
+      <div class="receipt-body" id="receipt-body"></div>
+      <div class="receipt-email-row">
+        <input type="email" id="receipt-email" class="receipt-email-input" placeholder="you@email.com" autocomplete="email" />
+        <button class="btn-email-receipt" id="btn-email-receipt" onclick="emailReceipt()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/>
+          </svg>
+          Email me this
+        </button>
+      </div>
+      <button class="btn-new-mission" onclick="newMission()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Start New Mission
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════════ DECISION REPORT MODAL ══════════ -->
+  <div class="modal-overlay" id="report-modal" style="display:none">
+    <div class="modal report-modal">
+      <div class="report-header">
+        <h2>Decision Trace Report</h2>
+        <p>Full audit log of OTTO's decision process</p>
+        <button class="btn-close-report" onclick="closeReport()">✕</button>
+      </div>
+      <div class="report-body" id="report-body"></div>
+    </div>
+  </div>
+
+  <script src="https://js.stripe.com/v3/"></script>
+  <script src="app.js"></script>
+</body>
+</html>
